@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using Newtonsoft.Json;
+using System.Net;
+using System.Text;
 
 namespace projet_pizza
 {
@@ -34,7 +36,7 @@ namespace projet_pizza
     }
     public class Pizza
     {
-        string nom;
+        public string nom {  get; init; }
         public float prix { get; init; }
         public bool vegetarienne { get; init; }
         public List<string> ingredients { get; protected set; }
@@ -76,11 +78,8 @@ namespace projet_pizza
     }
     public class Program
     {
-        public static void Main(string[] args)
+        public static List<Pizza> GetPizzaFromCode()
         {
-            Console.OutputEncoding = Encoding.UTF8;
-            var ingredients = new List<string>();
-
             var listeDePizza = new List<Pizza>()
             {
                 new Pizza("4 fromages", 11.5f, true, new List<string> {"cantal", "mozzarella", "fromage de chèvre", "gruyère"}),
@@ -89,12 +88,103 @@ namespace projet_pizza
                 new Pizza("margherita", 8f, true, new List < string > { "sauce tomate", "mozzarella", "basilic" }),
                 new Pizza("calzone", 12f, false, new List < string > { "tomate", "jambon", "persil", "oignons" }),
                 new Pizza("complète", 9.5f, false, new List < string > { "jambon", "oeuf", "fromage" }),
-                new PizzaPersonnalisee(),
-                new PizzaPersonnalisee(),
             };
 
-            foreach (var pizza in listeDePizza)
-                pizza.Afficher();
+            return listeDePizza;
+        }
+        public static List<Pizza> GetPizzaFromFile(string filename)
+        {
+            string data;
+
+            try
+            {
+                data = File.ReadAllText(filename);
+            }
+
+            catch 
+            {
+                Console.WriteLine("An error occured : File Not Found !");
+                return null;
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<List<Pizza>>(data);
+            }
+            catch
+            {
+                Console.WriteLine("An error occured : invalid data");
+                return null;
+            }
+
+        }
+        public static void GenerateJsonFile(List<Pizza> pizzas, string filename)
+        {
+            string pizzaSerialise;
+
+            try
+            {
+                pizzaSerialise = JsonConvert.SerializeObject(pizzas);
+            }
+            catch
+            {
+                Console.WriteLine("An error occured : Serialization Failed");
+                return;
+            }
+
+            File.WriteAllText(filename, pizzaSerialise);
+        }
+        public static List<Pizza> GetPizzaFromUrl(string url)
+        {
+            var webClient = new WebClient();
+            string getData = null;
+
+            Console.WriteLine("Téléchargement des données...");
+            try
+            {
+                getData = webClient.DownloadString(url);
+            }
+            catch(WebException ex)
+            {
+                if (ex.Response == null)
+                {
+                    Console.WriteLine("An error occured, please check your internet connexion or your url !");
+                    return null;
+                }
+                var statusCode = (HttpWebResponse)ex.Response;
+                
+                if (statusCode.StatusCode == HttpStatusCode.NotFound)
+                {
+                    Console.WriteLine("An error occured, File not found");
+                    return null;
+                }
+            }
+
+            try
+            {
+                return JsonConvert.DeserializeObject<List<Pizza>>(getData);
+            }
+            catch
+            {
+                Console.WriteLine("An error occured : Deserialization Failed");
+                return null;
+            }
+        }
+        public static void Main(string[] args)
+        {
+            string url = "https://codeavecjonathan.com/res/pizzas2.json";
+
+            Console.OutputEncoding = Encoding.UTF8;
+            //string path = Path.Combine("Data_pizza", "pizzas.json");
+
+            var pizzas = GetPizzaFromUrl(url);
+
+            if (pizzas !=  null)
+            {
+                foreach (var pizza in pizzas)
+                    pizza.Afficher();
+            }
+
         }
     }
 }
